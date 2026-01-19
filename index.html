@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Student App</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        /* --- DESIGN TOKENS --- */
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: #e0e7ff;
+            --bg-body: #f1f5f9;
+            --bg-surface: #ffffff;
+            --bg-header: rgba(255, 255, 255, 0.95);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+            --radius: 16px;
+            --fab-size: 56px;
+        }
+
+        [data-theme="dark"] {
+            --primary: #818cf8;
+            --primary-hover: #6366f1;
+            --primary-light: rgba(99, 102, 241, 0.15);
+            --bg-body: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-header: rgba(30, 41, 59, 0.95);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        /* --- GLOBAL RESET --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* --- LAYOUT --- */
+        .app-layout { 
+            display: grid; 
+            grid-template-columns: 380px 1fr; 
+            gap: 24px; 
+            max-width: 1600px; 
+            margin: 0 auto; 
+            padding: 24px; 
+            height: 100%; 
+            width: 100%;
+        }
+
+        /* --- HEADER --- */
+        .app-header {
+            grid-column: 1 / -1;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0;
+            height: 70px;
+        }
+        
+        .brand-col { display: flex; flex-direction: column; justify-content: center; }
+        .brand { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.2; }
+        .logo { color: var(--primary); }
+        
+        /* SERVER STATUS PILL */
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 0.75rem; font-weight: 600;
+            margin-top: 4px; padding: 2px 8px; border-radius: 12px;
+            width: fit-content; transition: 0.3s;
+        }
+        .status-pill.online { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .status-pill.offline { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        
+        /* Pulse Animation for Online Status */
+        .status-pill.online .status-dot { animation: pulse-green 2s infinite; }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .controls { display: flex; gap: 12px; align-items: center; }
+
+        /* --- COMPONENTS --- */
+        .card { background: var(--bg-surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
+        .btn-icon { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
+        .btn-icon:hover { background: var(--bg-body); color: var(--primary); }
+        
+        .search-bar { 
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            padding: 0 16px 0 40px; height: 44px; border-radius: 12px; width: 260px;
+            color: var(--text-main); outline: none; position: relative; font-size: 0.95rem;
+        }
+        .search-wrap { position: relative; }
+        .search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+
+        /* --- LIST (TABLE) --- */
+        .list-container { flex: 1; overflow-y: auto; position: relative; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead { background: var(--bg-body); position: sticky; top: 0; z-index: 5; }
+        th { padding: 16px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+        td { padding: 16px; border-bottom: 1px solid var(--border); }
+        tr:hover { background: var(--bg-body); }
+        
+        /* --- FORM (Sidebar) --- */
+        .form-panel { padding: 24px; height: 100%; }
+        .form-header { font-size: 1.25rem; font-weight: 600; margin-bottom: 24px; display: flex; justify-content: space-between; }
+        .input-group { margin-bottom: 16px; }
+        .label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+        .input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); font-size: 1rem; outline: none; }
+        .input:focus { border-color: var(--primary); background: var(--bg-surface); box-shadow: 0 0 0 2px var(--primary-light); }
+        .btn-primary { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1rem; }
+        .btn-secondary { width: 100%; padding: 14px; background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: 12px; font-weight: 600; margin-top: 12px; cursor: pointer; }
+
+        /* --- MOBILE FAB --- */
+        .fab {
+            position: fixed; bottom: 24px; right: 24px;
+            width: var(--fab-size); height: var(--fab-size);
+            background: var(--primary); color: white;
+            border-radius: 50%; display: none; 
+            align-items: center; justify-content: center;
+            font-size: 24px; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            cursor: pointer; z-index: 50; transition: transform 0.2s;
+        }
+        .fab:active { transform: scale(0.95); }
+
+        /* --- OVERLAY --- */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .overlay.active { opacity: 1; pointer-events: auto; }
+
+        /* --- BADGES --- */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-CS { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        .badge-IT { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .badge-AIML { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+        .badge-DS { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .badge-EXTC { background: rgba(107, 114, 128, 0.15); color: var(--text-muted); }
+
+        /* --- RESPONSIVE APP MODE --- */
+        @media (max-width: 1024px) {
+            body { height: 100vh; overflow: hidden; }
+            
+            .app-layout { 
+                display: block; padding: 0; margin: 0;
+                height: 100%; overflow: hidden;
+            }
+
+            .app-header {
+                position: sticky; top: 0;
+                background: var(--bg-header);
+                backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+                padding: 0 16px;
+                height: 80px; /* Slightly taller for status pill */
+                z-index: 20;
+                border-bottom: 1px solid var(--border);
+                display: flex; gap: 12px;
+            }
+            
+            .brand span { font-size: 1.1rem; }
+            .search-wrap { flex: 1; }
+            .search-bar { width: 100%; }
+
+            .card.list-card {
+                border: none; border-radius: 0; background: transparent;
+                height: calc(100vh - 80px); overflow-y: auto;
+                padding-bottom: 90px;
+            }
+            
+            thead { display: none; }
+            tbody { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+            tr {
+                display: flex; flex-direction: column; gap: 8px;
+                background: var(--bg-surface);
+                padding: 16px; border-radius: 16px;
+                border: 1px solid var(--border);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            }
+            td { padding: 0; border: none; display: flex; justify-content: space-between; align-items: center; }
+            
+            td:nth-child(1) { display: none; }
+            td:nth-child(2) { font-size: 1.1rem; font-weight: 600; color: var(--text-main); order: 1; }
+            td:nth-child(3) { color: var(--text-muted); font-family: monospace; order: 2; }
+            td:nth-child(3)::before { content: 'Roll: '; }
+            td:nth-child(4) { order: 3; margin-top: 4px; }
+            td:nth-child(5) { order: 4; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; justify-content: flex-end; gap: 12px; width: 100%; }
+
+            .card.form-card {
+                position: fixed; bottom: 0; left: 0; width: 100%;
+                height: auto; max-height: 85vh;
+                border-radius: 24px 24px 0 0;
+                z-index: 100;
+                transform: translateY(110%);
+                transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+                box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+                border: none;
+            }
+            .card.form-card.active { transform: translateY(0); }
+            .form-panel::before {
+                content: ''; display: block; width: 40px; height: 5px; 
+                background: var(--border); border-radius: 10px; margin: 0 auto 20px auto;
+            }
+            .fab { display: flex; }
+        }
+
+        /* --- LOADING & TOAST --- */
+        .loading-spinner { 
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 40px; height: 40px; border: 4px solid var(--primary-light); 
+            border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite; z-index: 200;
+        }
+        @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--text-main); color: var(--bg-surface);
+            padding: 12px 24px; border-radius: 50px; font-weight: 500;
+            z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); width: max-content;
+        }
+        .toast.show { opacity: 1; top: 30px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="toggleForm(false)"></div>
+    <div class="loading-spinner" id="loader"></div>
+    <div class="toast" id="toast">Action Successful</div>
+
+    <div class="app-layout">
+        
+        <header class="app-header">
+            <div class="brand-col">
+                <div class="brand">
+                    <i class="ph-fill ph-student logo"></i>
+                    <span>StudentAdmin</span>
+                </div>
+                
+                <div id="statusPill" class="status-pill offline">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+
+            <div class="search-wrap">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" class="search-bar" id="searchInput" placeholder="Search...">
+            </div>
+            <div class="controls">
+                <button class="btn-icon" id="downloadBtn"><i class="ph ph-download-simple"></i></button>
+                <button class="btn-icon" id="themeBtn"><i class="ph ph-moon"></i></button>
+            </div>
+        </header>
+
+        <div class="card form-card" id="formCard">
+            <div class="form-panel">
+                <div class="form-header">
+                    <span id="formTitle">Add Student</span>
+                    <button class="btn-icon" style="border:none;" onclick="toggleForm(false)"><i class="ph ph-x"></i></button>
+                </div>
+                <form id="studentForm">
+                    <div class="input-group">
+                        <label class="label">Full Name</label>
+                        <input type="text" class="input" id="nameInput" placeholder="John Doe" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="label">Roll Number</label>
+                        <input type="number" class="input" id="rollInput" placeholder="101" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="label">Branch</label>
+                        <select class="input" id="branchInput" required>
+                            <option value="CS">Computer Science</option>
+                            <option value="IT">Info Tech</option>
+                            <option value="AIML">AI & ML</option>
+                            <option value="DS">Data Science</option>
+                            <option value="EXTC">Electronics</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-primary" id="submitBtn">Save Student</button>
+                    <button type="button" class="btn-secondary" id="cancelBtn" onclick="resetForm()" style="display: none;">Cancel Edit</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card list-card">
+            <div class="list-container">
+                <table id="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Student Name</th>
+                            <th>Roll No</th>
+                            <th>Branch</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+                <div id="emptyState" style="padding: 40px; text-align: center; color: var(--text-muted); display: none;">
+                    <i class="ph ph-ghost" style="font-size: 2rem; margin-bottom: 8px;"></i><br>
+                    No students found.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fab" onclick="openCreateMode()">
+        <i class="ph ph-plus"></i>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/data';
+        let state = { data: [], isEditing: false, editId: null, theme: 'light' };
+        
+        // --- UI UTILS ---
+        function toggleForm(show) {
+            const card = document.getElementById('formCard');
+            const overlay = document.getElementById('overlay');
+            if(show) { card.classList.add('active'); overlay.classList.add('active'); } 
+            else { card.classList.remove('active'); overlay.classList.remove('active'); if(window.innerWidth > 1024) resetForm(); }
+        }
+
+        function openCreateMode() { resetForm(); toggleForm(true); }
+        function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+        function toggleLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+        
+        // --- STATUS INDICATOR LOGIC ---
+        function updateServerStatus(isOnline) {
+            const pill = document.getElementById('statusPill');
+            const text = document.getElementById('statusText');
+            if(isOnline) {
+                pill.className = 'status-pill online';
+                text.innerText = 'System Online';
+            } else {
+                pill.className = 'status-pill offline';
+                text.innerText = 'Offline';
+            }
+        }
+
+        // --- THEME ---
+        const themeBtn = document.getElementById('themeBtn');
+        themeBtn.onclick = () => {
+            state.theme = state.theme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', state.theme);
+            themeBtn.innerHTML = state.theme === 'light' ? '<i class="ph ph-moon"></i>' : '<i class="ph ph-sun"></i>';
+        };
+
+        // --- CRUD ---
+        async function fetchData() {
+            toggleLoader(true);
+            try {
+                const res = await fetch(API_URL);
+                if(!res.ok) throw new Error();
+                
+                const raw = await res.json();
+                if(Array.isArray(raw)) state.data = raw;
+                else if(raw.data) state.data = raw.data;
+                else if(raw.students) state.data = raw.students;
+                else state.data = [];
+                
+                updateServerStatus(true); // SERVER IS ONLINE
+                render();
+            } catch(e) {
+                updateServerStatus(false); // SERVER IS OFFLINE
+                showToast("Server Disconnected");
+            } finally {
+                toggleLoader(false);
+            }
+        }
+
+        function render() {
+            const tbody = document.getElementById('tableBody');
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = state.data.filter(s => {
+                const n = (s.studentName || s.name || "").toLowerCase();
+                const r = String(s.rollNo || s.roll || "");
+                return n.includes(term) || r.includes(term);
+            });
+
+            document.getElementById('emptyState').style.display = filtered.length ? 'none' : 'block';
+            tbody.innerHTML = '';
+
+            filtered.forEach((item, idx) => {
+                const id = item._id || item.id;
+                const name = item.studentName || item.name;
+                const roll = item.rollNo || item.roll;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td style="font-weight: 600">${name}</td>
+                    <td style="font-family: monospace">${roll}</td>
+                    <td><span class="badge badge-${item.branch}">${item.branch}</span></td>
+                    <td style="text-align: right;">
+                        <button class="btn-icon" style="display:inline-flex" onclick="initEdit('${id}')"><i class="ph ph-pencil-simple"></i></button>
+                        <button class="btn-icon" style="display:inline-flex; color: var(--danger); border-color: var(--danger)" onclick="deleteItem('${id}')"><i class="ph ph-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('studentForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                studentName: document.getElementById('nameInput').value,
+                rollNo: Number(document.getElementById('rollInput').value),
+                branch: document.getElementById('branchInput').value
+            };
+            
+            toggleLoader(true);
+            try {
+                const url = state.isEditing ? `${API_URL}/${state.editId}` : API_URL;
+                const method = state.isEditing ? 'PUT' : 'POST';
+                const res = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                if(!res.ok) throw new Error();
+                
+                showToast("Saved Successfully");
+                toggleForm(false);
+                fetchData();
+            } catch(e) { showToast("Failed to save"); } 
+            finally { toggleLoader(false); }
+        };
+
+        window.initEdit = (id) => {
+            const item = state.data.find(s => (s._id || s.id) == id);
+            if(!item) return;
+            state.isEditing = true; state.editId = id;
+            document.getElementById('nameInput').value = item.studentName || item.name;
+            document.getElementById('rollInput').value = item.rollNo || item.roll;
+            document.getElementById('branchInput').value = item.branch;
+            document.getElementById('formTitle').innerText = "Edit Student";
+            document.getElementById('submitBtn').innerText = "Update";
+            document.getElementById('cancelBtn').style.display = 'block';
+            toggleForm(true);
+        };
+
+        window.deleteItem = async (id) => {
+            if(!confirm("Delete this student?")) return;
+            toggleLoader(true);
+            try { await fetch(`${API_URL}/${id}`, {method: 'DELETE'}); showToast("Deleted"); fetchData(); } 
+            catch(e) { showToast("Delete failed"); } 
+            finally { toggleLoader(false); }
+        };
+
+        window.resetForm = () => {
+            state.isEditing = false; state.editId = null;
+            document.getElementById('studentForm').reset();
+            document.getElementById('formTitle').innerText = "Add Student";
+            document.getElementById('submitBtn').innerText = "Save Student";
+            document.getElementById('cancelBtn').style.display = 'none';
+        };
+
+        document.getElementById('downloadBtn').onclick = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Student List", 14, 20);
+            const rows = state.data.map((s, i) => [ i + 1, s.studentName || s.name, s.rollNo || s.roll, s.branch ]);
+            doc.autoTable({ head: [['#', 'Name', 'Roll', 'Branch']], body: rows, startY: 30 });
+            doc.save('students.pdf');
+        };
+
+        document.getElementById('searchInput').addEventListener('input', render);
+        fetchData();
+
+    </script>
+</body>
+</html>
