@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const mongoConnect = async () => {
   try {
     await mongoose.connect(
-      "mongodb+srv://root:root@mayank.yygoagp.mongodb.net/?appName=Mayank",
+      "YOUR_URL",
     );
 
     console.log("MongoDB Connected ✅");
