@@ -92,17 +92,5 @@ npm start
 http://localhost:3000
 ```
 
----
 
-## 🔒 Notes
-- This project is for learning purposes.
-- Do NOT commit your MongoDB credentials to GitHub.
-- Use `.env` for secrets in real projects.
 
----
-
-## 📈 Next Goals
-- Add validation + better error handling
-- Add pagination + search + filters
-- Add authentication (JWT)
-- Deploy the project online
